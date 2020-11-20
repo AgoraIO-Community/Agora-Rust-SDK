@@ -1,0 +1,27 @@
+[package]
+name = "agorartc-sys"
+version = "3.1.3"
+authors = ["DongYifan <dongyifan@agora.io>", "Yiqing Huang <huangyiqing@agora.io>"]
+description = "Agora RTC Rust SDK"
+license = "MIT OR Apache-2.0"
+readme = "publish_dscp.md"
+homepage = "https://docs.agora.io/en/Video/product_video?platform=All%20Platforms"
+repository = "https://github.com/AgoraIO-Community/Agora-Rust-SDK"
+keywords = ["agora", "RTC", "real-time", "communication", "video-call"]
+categories = ["multimedia", "multimedia::video", "multimedia::audio", "external-ffi-bindings"]
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+lazy_static = "1.4.0"
+num = "0.2"
+num-derive = "0.3"
+num-traits = "0.2"
+
+[build-dependencies]
+reqwest = { version = "0.10", features = ["blocking"] }
+tokio = { version = "0.2", features = ["full"] }
+error-chain = "0.12.2"
+futures = "0.3.8"
+zip = "0.5"
+find_folder = "0.3.0"
