@@ -1,3 +1,8 @@
+//
+//  Created by Yifan Dong on 2020/10/20.
+//  Copyright © 2020 Agora. All rights reserved.
+//
+
 use std::env;
 use error_chain::error_chain;
 use std::fs::File;
@@ -7,7 +12,6 @@ use std::path::Path;
 use std::io::Write;
 use tokio::runtime::Runtime;
 use std::ops::Add;
-use find_folder::*;
 
 error_chain! {
     foreign_links {
