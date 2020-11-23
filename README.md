@@ -64,7 +64,7 @@ You can also write a simple demo yourself by the following instructins.
 
    ```rust
    fn main() {
-       let rtc_engine = &a_s::agorartc::Agora_Rtc_Engine;
+       let rtc_engine = &agorartc_sys::agorartc::Agora_Rtc_Engine;
        rtc_engine.add_event_handler(&mut agorartc_sys::agorartc::agorartcnative::RtcEventHandler {
            onJoinChannelSuccess: None,
            onReJoinChannelSuccess: None,
