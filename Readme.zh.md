@@ -1,4 +1,4 @@
-# Agora-Python-SDK 
+# Agora-Rust-SDK 
 
 *[English](README.md) | 中文*
 
