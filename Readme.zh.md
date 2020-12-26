@@ -64,21 +64,46 @@ agorartc-sys = { version = "*", path = "[your-path-to]/agorartc-sys"}
 4. 在`src/main.rs`中写下一个简单的示例。
 
    ```rust
+   unsafe extern "C" fn on_error(error: ::std::os::raw::c_int, msg: *const ::std::os::raw::c_char) {
+       let msg = CStr::from_ptr(msg);
+       println!("On Error: code: {:?}, msg: {:?}", error, msg);
+   }
+   
+   unsafe extern "C" fn on_warning(warn: ::std::os::raw::c_int, msg: *const ::std::os::raw::c_char) {
+       if msg != std::ptr::null() {
+           let msg = CStr::from_ptr(msg);
+           println!("On Warn: code: {:?}, msg: {:?}", warn, msg);
+       }
+       println!("On Warning: code: {:?}", warn);
+   }
+   
+   unsafe extern "C" fn on_join_channel(
+       arg1: *const ::std::os::raw::c_char,
+       uid: agorartc_sys::agorartc::agorartcnative::uid_t,
+       elapsed: ::std::os::raw::c_int,
+   ) {
+       println!("onJoinChannel");
+   }
+   
+   unsafe extern "C" fn on_user_joined(uid: agorartc_sys::agorartc::agorartcnative::uid_t, elapsed: ::std::os::raw::c_int) {
+       println!("onUserJoined");
+   }
+   
    fn main() {
        let rtc_engine = &agorartc_sys::agorartc::Agora_Rtc_Engine;
        rtc_engine.add_event_handler(&mut agorartc_sys::agorartc::agorartcnative::RtcEventHandler {
-           onJoinChannelSuccess: None,
+           onJoinChannelSuccess: Some(on_join_channel),
            onReJoinChannelSuccess: None,
            onLeaveChannel: None,
            onConnectionLost: None,
            onConnectionInterrupted: None,
            onRequestToken: None,
-           onUserJoined: None,
+           onUserJoined: Some(on_user_joined),
            onUserOffline: None,
            onAudioVolumeIndication: None,
            onUserMuteAudio: None,
-           onWarning: None,
-           onError: None,
+           onWarning: Some(on_warning),
+           onError: Some(on_error),
            onRtcStats: None,
            onAudioMixingFinished: None,
            onAudioRouteChanged: None,
@@ -143,7 +168,8 @@ agorartc-sys = { version = "*", path = "[your-path-to]/agorartc-sys"}
            onFacePositionChanged: None,
            onTestEnd: None,
        });
-       rtc_engine.initialize("YOUR-APPID", agorartc_sys::agorartc::AREA_CODE::AREA_CODE_GLOBAL); // 如您还未获取App ID，您可以查看附录。
+       // If you do not have an App ID, see Appendix.
+       rtc_engine.initialize("YOUR-APPID", agorartc_sys::agorartc::AREA_CODE::AREA_CODE_GLOBAL);
        rtc_engine.enable_video();
        rtc_engine.join_channel("", "channel-name", "", 0u32);
        let mut input = String::new();
@@ -153,18 +179,22 @@ agorartc-sys = { version = "*", path = "[your-path-to]/agorartc-sys"}
    }
    ```
 
-5. 编译您的项目
+5. 添加App ID。
+
+   如果您还未获取App ID，请参见附录。请获取一个没有token的App ID。将`rtc_engine.initialize("YOUR-APPID", agorartc_sys::agorartc::AREA_CODE::AREA_CODE_GLOBAL);`中`YOUR-APPID`替换为您的App ID。
+   
+6. 编译您的项目。
 
    ```bash
    $ cargo build
    ```
 
-6. 下载所需的SDK。
+7. 下载所需的SDK。
 
    - （macOS）在 [Agora Video SDK for macOS](https://download.agora.io/sdk/release/Agora_Native_SDK_for_Mac_v3_1_2_FULL.zip) 下载 SDK。解压缩之后，将 `libs` 目录下的 `AograRtcEngineKit.framework` 复制到`target/debug`中。
    - （Windows）在 [Agora Video SDK for Windows](https://download.agora.io/sdk/release/Agora_Native_SDK_for_Windows_v3_1_2_FULL.zip) 下载 SDK。解压缩之后，将 `libs/x86_64` 目录下的 `agora_rtc_sdk.dll` 和 `agora_rtc_sdk.lib` 复制到`target/debug`中。
 
-7. 运行示例。
+8. 运行示例。
 
    ```bash
    $ cargo run
