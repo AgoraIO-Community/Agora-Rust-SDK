@@ -1260,7 +1260,7 @@ impl AgoraRtcEngine {
      - 0: Success.
      - < 0: Failure.
      */
-    pub fn set_video_encoder_configuation(&self, config: agorartcnative::VideoEncoderConfiguration) -> i32 {
+    pub fn set_video_encoder_configuration(&self, config: agorartcnative::VideoEncoderConfiguration) -> i32 {
         unsafe {
             return agorartcnative::setVideoEncoderConfiguration(self.native_engine, config);
         }
