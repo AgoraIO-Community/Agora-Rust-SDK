@@ -7,15 +7,15 @@
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
 #![allow(dead_code)]
-extern crate num;
 
-extern crate lazy_static;
+use std::ffi::{CStr, CString};
+use std::sync::{Mutex, MutexGuard};
 
-pub mod agorartcnative;
-
-use std::ffi::{CString, CStr};
 use lazy_static::lazy_static;
 
+use crate::agorartc::agorartcnative::{add_C_EventHandler, RtcEventHandler};
+
+pub mod agorartcnative;
 
 /**
  * IP areas.
@@ -610,6 +610,20 @@ pub enum RAW_AUDIO_FRAME_OP_MODE_TYPE {
 #[derive(Debug)]
 pub struct AgoraRtcEngine {
     native_engine: agorartcnative::IRtcEngineBridge_ptr,
+    pub event_handler: TestEventHandler,
+}
+
+impl AgoraRtcEngine {
+    pub fn new(handler: TestEventHandler) -> Self {
+        AgoraRtcEngine {
+            native_engine: unsafe { agorartcnative::createRtcBridge() },
+            event_handler: handler,
+        }
+    }
+
+    pub fn instance() -> MutexGuard<'static, AgoraRtcEngine> {
+        Agora_Rtc_Engine.lock().unwrap()
+    }
 }
 
 #[derive(Debug)]
@@ -668,12 +682,268 @@ impl Drop for VideoDeviceManager {
 
 lazy_static! {
     #[derive(Debug)]
-    pub static ref Agora_Rtc_Engine: AgoraRtcEngine = AgoraRtcEngine {
-        native_engine: unsafe {agorartcnative::createRtcBridge()},
-    };
+    static ref Agora_Rtc_Engine: Mutex<AgoraRtcEngine> = Mutex::new(AgoraRtcEngine::new(TestEventHandler::new()));
 }
 
-unsafe impl std::marker::Sync for AgoraRtcEngine {}
+unsafe impl Sync for AgoraRtcEngine {}
+
+unsafe impl Send for AgoraRtcEngine {}
+
+unsafe extern "C" fn on_api_call_executed(
+    err: ::std::os::raw::c_int,
+    api: *const ::std::os::raw::c_char,
+    result: *const ::std::os::raw::c_char,
+) {
+    let api_ = CStr::from_ptr(api);
+    let result_ = CStr::from_ptr(result);
+    println!("API Excuted: err {:?}, api {:?}, result {:?}", err, api_, result_);
+    if Agora_Rtc_Engine.lock().unwrap().event_handler.onApiCallExecuted.is_some() {
+        Agora_Rtc_Engine.lock().unwrap().event_handler.onApiCallExecuted.unwrap()();
+    }
+}
+
+impl agorartcnative::RtcEventHandler {
+    pub fn new() -> agorartcnative::RtcEventHandler {
+        agorartcnative::RtcEventHandler {
+            onJoinChannelSuccess: None,
+            onReJoinChannelSuccess: None,
+            onLeaveChannel: None,
+            onConnectionLost: None,
+            onConnectionInterrupted: None,
+            onRequestToken: None,
+            onUserJoined: None,
+            onUserOffline: None,
+            onAudioVolumeIndication: None,
+            onUserMuteAudio: None,
+            onWarning: None,
+            onError: None,
+            onRtcStats: None,
+            onAudioMixingFinished: None,
+            onAudioRouteChanged: None,
+            onFirstRemoteVideoDecoded: None,
+            onVideoSizeChanged: None,
+            onClientRoleChanged: None,
+            onUserMuteVideo: None,
+            onMicrophoneEnabled: None,
+            onApiCallExecuted: Some(on_api_call_executed),
+            onFirstLocalAudioFrame: None,
+            onFirstRemoteAudioFrame: None,
+            onLastmileQuality: None,
+            onAudioQuality: None,
+            onStreamInjectedStatus: None,
+            onStreamUnpublished: None,
+            onStreamPublished: None,
+            onStreamMessageError: None,
+            onStreamMessage: None,
+            onConnectionBanned: None,
+            onRemoteVideoTransportStats: None,
+            onRemoteAudioTransportStats: None,
+            onTranscodingUpdated: None,
+            onAudioDeviceVolumeChanged: None,
+            onActiveSpeaker: None,
+            onMediaEngineStartCallSuccess: None,
+            onMediaEngineLoadSuccess: None,
+            onConnectionStateChanged: None,
+            onRemoteSubscribeFallbackToAudioOnly: None,
+            onLocalPublishFallbackToAudioOnly: None,
+            onUserEnableLocalVideo: None,
+            onRemoteVideoStateChanged: None,
+            onVideoDeviceStateChanged: None,
+            onAudioEffectFinished: None,
+            onRemoteAudioMixingEnd: None,
+            onRemoteAudioMixingBegin: None,
+            onCameraExposureAreaChanged: None,
+            onCameraFocusAreaChanged: None,
+            onCameraReady: None,
+            onAudioDeviceStateChanged: None,
+            onUserEnableVideo: None,
+            onFirstRemoteVideoFrame: None,
+            onFirstLocalVideoFrame: None,
+            onRemoteAudioStats: None,
+            onRemoteVideoStats: None,
+            onLocalVideoStats: None,
+            onNetworkQuality: None,
+            onTokenPrivilegeWillExpire: None,
+            onVideoStopped: None,
+            onAudioMixingStateChanged: None,
+            onFirstRemoteAudioDecoded: None,
+            onLocalVideoStateChanged: None,
+            onNetworkTypeChanged: None,
+            onRtmpStreamingStateChanged: None,
+            onLastmileProbeResult: None,
+            onLocalUserRegistered: None,
+            onUserInfoUpdated: None,
+            onLocalAudioStateChanged: None,
+            onRemoteAudioStateChanged: None,
+            onLocalAudioStats: None,
+            onChannelMediaRelayStateChanged: None,
+            onChannelMediaRelayEvent: None,
+            onFacePositionChanged: None,
+            onTestEnd: None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct TestEventHandler {
+    pub onJoinChannelSuccess: Option<fn()>,
+    pub onReJoinChannelSuccess: Option<fn()>,
+    pub onLeaveChannel: Option<fn()>,
+    pub onConnectionLost: Option<fn()>,
+    pub onConnectionInterrupted: Option<fn()>,
+    pub onRequestToken: Option<fn()>,
+    pub onUserJoined: Option<fn()>,
+    pub onUserOffline: Option<fn()>,
+    pub onAudioVolumeIndication: Option<fn()>,
+    pub onUserMuteAudio: Option<fn()>,
+    pub onWarning: Option<fn()>,
+    pub onError: Option<fn()>,
+    pub onRtcStats: Option<fn()>,
+    pub onAudioMixingFinished: Option<fn()>,
+    pub onAudioRouteChanged: Option<fn()>,
+    pub onFirstRemoteVideoDecoded: Option<fn()>,
+    pub onVideoSizeChanged: Option<fn()>,
+    pub onClientRoleChanged: Option<fn()>,
+    pub onUserMuteVideo: Option<fn()>,
+    pub onMicrophoneEnabled: Option<fn()>,
+    pub onApiCallExecuted: Option<fn()>,
+    pub onFirstLocalAudioFrame: Option<fn()>,
+    pub onFirstRemoteAudioFrame: Option<fn()>,
+    pub onLastmileQuality: Option<fn()>,
+    pub onAudioQuality: Option<fn()>,
+    pub onStreamInjectedStatus: Option<fn()>,
+    pub onStreamUnpublished: Option<fn()>,
+    pub onStreamPublished: Option<fn()>,
+    pub onStreamMessageError: Option<fn()>,
+    pub onStreamMessage: Option<fn()>,
+    pub onConnectionBanned: Option<fn()>,
+    pub onRemoteVideoTransportStats: Option<fn()>,
+    pub onRemoteAudioTransportStats: Option<fn()>,
+    pub onTranscodingUpdated: Option<fn()>,
+    pub onAudioDeviceVolumeChanged: Option<fn()>,
+    pub onActiveSpeaker: Option<fn()>,
+    pub onMediaEngineStartCallSuccess: Option<fn()>,
+    pub onMediaEngineLoadSuccess: Option<fn()>,
+    pub onConnectionStateChanged: Option<fn()>,
+    pub onRemoteSubscribeFallbackToAudioOnly: Option<fn()>,
+    pub onLocalPublishFallbackToAudioOnly: Option<fn()>,
+    pub onUserEnableLocalVideo: Option<fn()>,
+    pub onRemoteVideoStateChanged: Option<fn()>,
+    pub onVideoDeviceStateChanged: Option<fn()>,
+    pub onAudioEffectFinished: Option<fn()>,
+    pub onRemoteAudioMixingEnd: Option<fn()>,
+    pub onRemoteAudioMixingBegin: Option<fn()>,
+    pub onCameraExposureAreaChanged: Option<fn()>,
+    pub onCameraFocusAreaChanged: Option<fn()>,
+    pub onCameraReady: Option<fn()>,
+    pub onAudioDeviceStateChanged: Option<fn()>,
+    pub onUserEnableVideo: Option<fn()>,
+    pub onFirstRemoteVideoFrame: Option<fn()>,
+    pub onFirstLocalVideoFrame: Option<fn()>,
+    pub onRemoteAudioStats: Option<fn()>,
+    pub onRemoteVideoStats: Option<fn()>,
+    pub onLocalVideoStats: Option<fn()>,
+    pub onNetworkQuality: Option<fn()>,
+    pub onTokenPrivilegeWillExpire: Option<fn()>,
+    pub onVideoStopped: Option<fn()>,
+    pub onAudioMixingStateChanged: Option<fn()>,
+    pub onFirstRemoteAudioDecoded: Option<fn()>,
+    pub onLocalVideoStateChanged: Option<fn()>,
+    pub onNetworkTypeChanged: Option<fn()>,
+    pub onRtmpStreamingStateChanged: Option<fn()>,
+    pub onLastmileProbeResult: Option<fn()>,
+    pub onLocalUserRegistered: Option<fn()>,
+    pub onUserInfoUpdated: Option<fn()>,
+    pub onLocalAudioStateChanged: Option<fn()>,
+    pub onRemoteAudioStateChanged: Option<fn()>,
+    pub onLocalAudioStats: Option<fn()>,
+    pub onChannelMediaRelayStateChanged: Option<fn()>,
+    pub onChannelMediaRelayEvent: Option<fn()>,
+    pub onFacePositionChanged: Option<fn()>,
+    pub onTestEnd: Option<fn()>,
+}
+
+impl TestEventHandler {
+    pub fn new() -> TestEventHandler {
+        TestEventHandler {
+            onJoinChannelSuccess: None,
+            onReJoinChannelSuccess: None,
+            onLeaveChannel: None,
+            onConnectionLost: None,
+            onConnectionInterrupted: None,
+            onRequestToken: None,
+            onUserJoined: None,
+            onUserOffline: None,
+            onAudioVolumeIndication: None,
+            onUserMuteAudio: None,
+            onWarning: None,
+            onError: None,
+            onRtcStats: None,
+            onAudioMixingFinished: None,
+            onAudioRouteChanged: None,
+            onFirstRemoteVideoDecoded: None,
+            onVideoSizeChanged: None,
+            onClientRoleChanged: None,
+            onUserMuteVideo: None,
+            onMicrophoneEnabled: None,
+            onApiCallExecuted: None,
+            onFirstLocalAudioFrame: None,
+            onFirstRemoteAudioFrame: None,
+            onLastmileQuality: None,
+            onAudioQuality: None,
+            onStreamInjectedStatus: None,
+            onStreamUnpublished: None,
+            onStreamPublished: None,
+            onStreamMessageError: None,
+            onStreamMessage: None,
+            onConnectionBanned: None,
+            onRemoteVideoTransportStats: None,
+            onRemoteAudioTransportStats: None,
+            onTranscodingUpdated: None,
+            onAudioDeviceVolumeChanged: None,
+            onActiveSpeaker: None,
+            onMediaEngineStartCallSuccess: None,
+            onMediaEngineLoadSuccess: None,
+            onConnectionStateChanged: None,
+            onRemoteSubscribeFallbackToAudioOnly: None,
+            onLocalPublishFallbackToAudioOnly: None,
+            onUserEnableLocalVideo: None,
+            onRemoteVideoStateChanged: None,
+            onVideoDeviceStateChanged: None,
+            onAudioEffectFinished: None,
+            onRemoteAudioMixingEnd: None,
+            onRemoteAudioMixingBegin: None,
+            onCameraExposureAreaChanged: None,
+            onCameraFocusAreaChanged: None,
+            onCameraReady: None,
+            onAudioDeviceStateChanged: None,
+            onUserEnableVideo: None,
+            onFirstRemoteVideoFrame: None,
+            onFirstLocalVideoFrame: None,
+            onRemoteAudioStats: None,
+            onRemoteVideoStats: None,
+            onLocalVideoStats: None,
+            onNetworkQuality: None,
+            onTokenPrivilegeWillExpire: None,
+            onVideoStopped: None,
+            onAudioMixingStateChanged: None,
+            onFirstRemoteAudioDecoded: None,
+            onLocalVideoStateChanged: None,
+            onNetworkTypeChanged: None,
+            onRtmpStreamingStateChanged: None,
+            onLastmileProbeResult: None,
+            onLocalUserRegistered: None,
+            onUserInfoUpdated: None,
+            onLocalAudioStateChanged: None,
+            onRemoteAudioStateChanged: None,
+            onLocalAudioStats: None,
+            onChannelMediaRelayStateChanged: None,
+            onChannelMediaRelayEvent: None,
+            onFacePositionChanged: None,
+            onTestEnd: None,
+        }
+    }
+}
 
 impl AgoraRtcEngine {
     /** Creates and gets an AgoraRtcChannel instance.
@@ -743,6 +1013,7 @@ impl AgoraRtcEngine {
     pub fn initialize(&self, app_id: &str, area_code: AREA_CODE) -> i32 {
         unsafe {
             let the_app_id: &CStr = &CString::new(app_id).expect("app_id new failed");
+            self.add_event_handler(&mut RtcEventHandler::new());
             return agorartcnative::initialize(self.native_engine, the_app_id.as_ptr(), std::ptr::null_mut(), area_code as u32);
         }
     }
